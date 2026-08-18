@@ -1,0 +1,15 @@
+services:
+  web:
+    build: .
+    container_name: ceynex-web
+    restart: unless-stopped
+    environment:
+      # Frontend calls the backend over the VPC's internal network, not the public internet.
+      API_BASE_URL: http://${BACKEND_INTERNAL_IP}:8000
+    ports:
+      - "80:3000"   # adjust 3000 to whatever port your framework serves on internally
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3000 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
