@@ -49,8 +49,12 @@ WORKDIR /app
 COPY ceynex-core/config/ ./config/
 
 # Never run as root; the app writes only to the LLM cache and the model registry.
+# Every path a volume will be mounted at must exist in the image, owned by the
+# runtime user. Docker seeds a fresh named volume from the image directory,
+# including its ownership; a path the image does not create arrives owned by
+# root and the non-root process cannot write to it.
 RUN useradd --system --create-home --uid 10001 ceynex \
- && mkdir -p /app/.cache /app/models /app/mlruns \
+ && mkdir -p /app/.cache /app/models /app/data/raw /app/data/parquet \
  && chown -R ceynex:ceynex /app
 USER ceynex
 
