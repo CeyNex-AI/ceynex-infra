@@ -1,0 +1,42 @@
+# BuildKit reads <dockerfile-path>.dockerignore in preference to a context-root
+# .dockerignore. The context here is the directory holding all three repos, which
+# is not itself a repo, so this is the only place the ignore list can be tracked.
+#
+# Without it `COPY ceynex-core/ .` drags in .venv/ (hundreds of MB), .git/, the
+# raw data cache and the trained models — every one of which busts the layer
+# cache on each rebuild.
+
+**/.git
+**/.gitignore
+**/.venv
+**/venv
+**/__pycache__
+**/*.py[cod]
+**/*.egg-info
+**/.pytest_cache
+**/.ruff_cache
+**/.mypy_cache
+**/build
+**/dist
+
+# Rebuildable artefacts; the container gets these as volumes instead.
+**/data/raw
+**/data/staging
+**/data/parquet
+**/models
+**/.cache
+**/mlruns
+
+# Local-only working files
+**/.env
+**/CLAUDE.md
+**/CeyNex_plan_updated
+**/CeyNex_plan.tar.gz
+
+# The governing documents: ~15 MB of PDF and DOCX with no runtime role.
+docs
+**/docs/_text
+
+# The frontend is deployed from its own VM, not baked into the API image.
+**/web/node_modules
+**/web/dist
