@@ -1,0 +1,75 @@
+services:
+  postgres:
+    image: postgres:18.4
+    container_name: ceynex-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      # postgres:18 keeps its data in a version-named subdirectory and wants the
+      # mount HERE, one level above. Mounting /var/lib/postgresql/data is what
+      # crash-looped this container: the image finds data in an "unused
+      # mount/volume" it will not adopt, and exits. See
+      # https://github.com/docker-library/postgres/pull/1259
+      - postgres_data:/var/lib/postgresql
+    # No initdb hook. The schema lives in the ceynex-contracts package and is
+    # applied by `make db-init` from ceynex-core, so one code path serves the
+    # local dev stack and this VM. An initdb mount would only ever run on a
+    # first-boot empty volume, which is not how this box gets updated.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  neo4j:
+    image: neo4j:5.26-community
+    container_name: ceynex-neo4j
+    restart: unless-stopped
+    environment:
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD}
+      # Match ceynex-core's dev stack. Without APOC a loader that runs locally
+      # fails on this box, which is the worst possible place to find out.
+      NEO4J_PLUGINS: '["apoc"]'
+      NEO4J_dbms_security_procedures_unrestricted: "apoc.*"
+      # Modest heap/pagecache sizing appropriate for a 15GB VM shared with Postgres+Redis.
+      # Tune upward if Neo4j is the only thing on this box.
+      NEO4J_server_memory_heap_initial__size: 1G
+      NEO4J_server_memory_heap_max__size: 2G
+      NEO4J_server_memory_pagecache_size: 2G
+    ports:
+      - "7474:7474"   # Neo4j Browser (HTTP)
+      - "7687:7687"   # Bolt protocol (what your Python driver connects to)
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:7474 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:8.0
+    container_name: ceynex-redis
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a $${REDIS_PASSWORD} ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  neo4j_data:
+  neo4j_logs:
+  redis_data:
