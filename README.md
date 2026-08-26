@@ -59,3 +59,7 @@ Every `.env.example` is tracked; no filled-in `.env` ever is. The backend's
 `OPENAI_API_KEY` may be left empty. The system then answers with raw
 knowledge-graph and forecast figures and sets `degraded=true`, which is required
 behaviour under SRS 3.4.3, not a broken deployment.
+
+`OPENROUTER_API_KEY` (R5 failsafe, tried once if the OpenAI call above fails or
+its spend cap is hit) may also be left empty, same reasoning — the model ids
+and failsafe config live in `ceynex-core/config/llm.yaml`.
