@@ -20,10 +20,14 @@
 **/dist
 
 # Rebuildable artefacts; the container gets these as volumes instead.
-**/data/raw
-**/data/staging
-**/data/parquet
-**/models
+# Anchored to each repo root, not **/models -- an unanchored pattern also
+# matches ceynex-core/ceynex/models/, the *source* package (registry.py,
+# apparel.py, etc.), silently dropping it from the build context and making
+# `from ceynex.models import registry` a 500 at runtime despite working in
+# every local/test environment that never goes through this ignore file.
+ceynex-core/models
+ceynex-contracts/models
+ceynex-infra/models
 **/.cache
 **/mlruns
 
