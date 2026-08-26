@@ -1,0 +1,41 @@
+# Templated by nginx:alpine's built-in entrypoint (envsubst on every file
+# under /etc/nginx/templates/), which substitutes only the env vars actually
+# set on the container -- nginx's own runtime variables ($host, $uri, etc.)
+# are untouched since they were never in that list. BACKEND_INTERNAL_IP is
+# set via docker-compose.yml's environment: block.
+
+server {
+    listen 80;
+    server_name _;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # Same-origin API path -> backend VM, over the VPC. This is the only
+    # thing that lets the browser reach a service with no public IP at all.
+    #
+    # proxy_pass has no path component here deliberately: with one, nginx
+    # replaces the matched "/api/" prefix in the upstream request (so
+    # /api/query would become /query). The backend's real routes live under
+    # /api/ (verified against it directly: POST /api/query, not /query), so
+    # the full original URI must pass through unchanged.
+    location /api/ {
+        proxy_pass http://${BACKEND_INTERNAL_IP}:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location = /health {
+        proxy_pass http://${BACKEND_INTERNAL_IP}:8000/health;
+    }
+
+    # SPA fallback -- the app uses BrowserRouter (see src/App.tsx), so any
+    # non-file path must resolve to index.html or client-side routes 404 on
+    # refresh.
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
