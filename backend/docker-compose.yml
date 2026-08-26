@@ -34,6 +34,12 @@ services:
       # to raw KG and model output rather than failing (SRS 3.4.3).
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
 
+      # R5 failsafe (ceynex-core config/llm.yaml `fallback` block): tried once
+      # if the primary OpenAI call fails/times out or its daily spend cap is
+      # hit. Empty just means the failsafe is unusable, same degrade-don't-fail
+      # posture as OPENAI_API_KEY above.
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+
       # R2. Empty falls back to the committed bulk CSV extract.
       COMTRADE_API_KEY: ${COMTRADE_API_KEY:-}
 
