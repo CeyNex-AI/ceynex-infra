@@ -1,0 +1,17 @@
+# BuildKit reads <dockerfile-path>.dockerignore in preference to a context-root
+# .dockerignore. The context here is the directory holding both repos, which
+# is not itself a repo, so this is the only place the ignore list can be
+# tracked -- same reasoning as backend/Dockerfile.dockerignore.
+
+**/.git
+**/.gitignore
+**/node_modules
+**/dist
+**/.vscode
+**/CLAUDE.md
+
+# ceynex-infra itself has no role in the build beyond the two files this
+# Dockerfile explicitly COPYs.
+ceynex-infra/backend
+ceynex-infra/database
+ceynex-infra/gcp
