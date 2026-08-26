@@ -1,15 +1,27 @@
 services:
   web:
-    build: .
+    build:
+      context: ../..
+      dockerfile: ceynex-infra/frontend/Dockerfile
+    image: ceynex-web:latest
     container_name: ceynex-web
     restart: unless-stopped
     environment:
-      # Frontend calls the backend over the VPC's internal network, not the public internet.
-      API_BASE_URL: http://${BACKEND_INTERNAL_IP}:8000
+      # Read only by nginx's startup envsubst (nginx.conf.template) to proxy
+      # /api -> the backend VM. Never reaches client-side JS, which is what
+      # makes this safe as a runtime var -- contrast with a VITE_* var, which
+      # would need to be known at `npm run build` time instead (see README.md).
+      BACKEND_INTERNAL_IP: ${BACKEND_INTERNAL_IP}
     ports:
-      - "80:3000"   # adjust 3000 to whatever port your framework serves on internally
+      - "80:80"
     healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost:3000 || exit 1"]
+      # 127.0.0.1, not localhost: the container's /etc/hosts resolves
+      # localhost to ::1 first, but nginx only binds 0.0.0.0:80 (IPv4) --
+      # wget was hitting a closed IPv6 socket and never falling back,
+      # so the container reported unhealthy from boot even while serving
+      # real traffic correctly the whole time.
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ >/dev/null || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 5
+      start_period: 10s
