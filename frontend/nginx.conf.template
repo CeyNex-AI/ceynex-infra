@@ -7,6 +7,18 @@
 server {
     listen 80;
     server_name _;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    server_name _;
+
+    # Self-signed, IP-only cert (no domain yet). Swap fullchain.pem/privkey.pem
+    # for certbot-issued ones once a domain points here -- see README.md.
+    ssl_certificate     /etc/nginx/certs/fullchain.pem;
+    ssl_certificate_key /etc/nginx/certs/privkey.pem;
+    ssl_protocols       TLSv1.2 TLSv1.3;
 
     root /usr/share/nginx/html;
     index index.html;

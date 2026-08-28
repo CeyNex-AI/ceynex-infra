@@ -26,11 +26,12 @@ FROM nginx:1.27-alpine
 COPY --from=build /build/dist /usr/share/nginx/html
 COPY ceynex-infra/frontend/nginx.conf.template /etc/nginx/templates/default.conf.template
 
-EXPOSE 80
+EXPOSE 80 443
 
-# 127.0.0.1, not localhost: /etc/hosts resolves localhost to ::1 first,
-# but nginx only binds 0.0.0.0:80 (IPv4) -- wget hit a closed IPv6 socket
-# and never fell back, so this reported unhealthy from boot regardless of
-# whether the app actually worked.
+# https, self-signed for now (--no-check-certificate matches curl -k; see
+# README.md's TLS section). 127.0.0.1 not localhost: /etc/hosts resolves
+# localhost to ::1 first, but nginx only binds 0.0.0.0 (IPv4) -- wget hit a
+# closed IPv6 socket and never fell back, so this reported unhealthy from
+# boot regardless of whether the app actually worked.
 HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=5 \
-  CMD wget -qO- http://127.0.0.1/ >/dev/null || exit 1
+  CMD wget --no-check-certificate -qO- https://127.0.0.1/ >/dev/null || exit 1

@@ -1,30 +1,44 @@
 # frontend VM
 
-The only publicly reachable VM. Serves the React app on port 80 and is the only
-thing allowed to talk to the backend VM on port 8000.
+The only publicly reachable VM. Serves the React app (`ceynex-web`, M3
+Fernando's deliverable) on port 80/443 via nginx, and is the only VM allowed
+to talk to the backend VM on port 8000.
 
-## Status: not deployable yet
+## Status: deployed
 
-`docker-compose.yml` here declares `build: .`, but **there is no Dockerfile in
-this directory and there is not meant to be one yet.** The web application
-(`web/`, Vite + React + Tailwind) is M3 Fernando's deliverable per the ownership
-table in `ceynex-core/CLAUDE.md`. This directory holds the VM-side wiring that
-will run it, nothing more.
+`Dockerfile` builds `ceynex-web/` (Vite + React + Tailwind) as a static bundle
+and serves it with nginx, which reverse-proxies `/api/` and `/health` to the
+backend over the VPC (`nginx.conf.template`, `BACKEND_INTERNAL_IP`). Build
+context is the two repos as siblings, same convention as `backend/Dockerfile`:
+`ceynex-infra` sitting beside `ceynex-web`.
 
-When M3's `web/` lands, whoever adds the Dockerfile should know about two traps
-already visible in the compose file:
+Two traps this setup avoids:
 
-1. **`API_BASE_URL` as a container env var does nothing to a static build.**
-   Vite inlines `VITE_*` variables at build time. A runtime environment variable
-   on an already-built bundle is never read. Either pass it as a build arg, or
-   drop it and use a same-origin path.
+1. **`BACKEND_INTERNAL_IP` is read only by nginx's startup `envsubst`, never by
+   client JS.** A `VITE_*` var would get inlined into the bundle at build time
+   instead — wrong tool for a value that can change per-deploy.
+2. **The browser cannot reach `http://10.160.0.3:8000` directly** (VPC-internal,
+   no external IP by design). `location /api/` on this nginx is what makes the
+   API reachable at all, same-origin, no CORS needed.
 
-2. **The browser cannot reach `http://10.160.0.3:8000`.** That is a VPC-internal
-   address; the backend VM has no external IP, by design. A bundle that fetches
-   it directly fails for every user. The frontend VM needs to proxy `/api` to the
-   backend itself — an nginx `location /api { proxy_pass ...; }` in front of the
-   static build is the smallest thing that works, and it keeps the API
-   same-origin so no CORS configuration is needed either.
+## TLS
 
-Until then, deploy the database and backend VMs only; the API is verified with
-`curl` from the frontend VM (see `../RUNBOOK.md`).
+HTTPS is served on 443 with a **self-signed** cert
+(`certs/fullchain.pem`/`certs/privkey.pem`, generated with `openssl req -x509`,
+SAN = the VM's external IP). Port 80 redirects to 443. Browsers will show an
+untrusted-certificate warning — expected, since no public CA issues certs for
+bare IP addresses.
+
+**Once a domain is pointed at this VM's external IP**, replace the self-signed
+setup with a real one:
+
+```bash
+sudo apt-get install -y certbot python3-certbot-nginx   # or run certbot in a
+                                                          # sidecar container
+# then either let certbot's nginx plugin rewrite the config, or manually
+# swap certs/fullchain.pem + certs/privkey.pem for the certbot-issued files
+# and add a renewal cron/systemd timer (`certbot renew`).
+```
+
+No firewall change needed — `allow-web-frontend` already opens tcp:80 and
+tcp:443 to `0.0.0.0/0`.
