@@ -24,10 +24,20 @@ Two traps this setup avoids:
 ## TLS
 
 HTTPS is served on 443 with a **self-signed** cert
-(`certs/fullchain.pem`/`certs/privkey.pem`, generated with `openssl req -x509`,
-SAN = the VM's external IP). Port 80 redirects to 443. Browsers will show an
-untrusted-certificate warning — expected, since no public CA issues certs for
-bare IP addresses.
+(`certs/fullchain.pem`/`certs/privkey.pem`, SAN = the VM's external IP). Port 80
+redirects to 443. Browsers will show an untrusted-certificate warning — expected,
+since no public CA issues certs for bare IP addresses.
+
+**Generate the cert before the first `docker compose up`**, on the VM:
+
+```bash
+cd ~/ceynex/ceynex-infra/frontend
+./make-cert.sh            # SAN = this VM's external IP, from GCP metadata
+```
+
+`certs/` is gitignored and nginx will not start without both files in it, so
+skipping this step takes the site down rather than upgrading it. The script is
+idempotent — it refuses to overwrite an existing cert unless given `--force`.
 
 **Once a domain is pointed at this VM's external IP**, replace the self-signed
 setup with a real one:
