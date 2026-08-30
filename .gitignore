@@ -5,6 +5,10 @@
 
 .DS_Store
 
+# Self-signed today, certbot-issued later -- either way a private key, never
+# tracked. frontend/README.md documents how to (re)generate it.
+frontend/certs/
+
 # Local working notes — the tracked guidance is README.md and DEPLOY_ORDER.md.
 /CLAUDE.md
 
