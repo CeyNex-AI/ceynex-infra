@@ -28,6 +28,15 @@ services:
       NEO4J_PASSWORD: ${NEO4J_PASSWORD}
       REDIS_URL: redis://:${REDIS_PASSWORD}@${DATABASE_INTERNAL_IP}:6379/0
 
+      # Policy-document retrieval (D10). Unset, or CEYNEX_POLICY_RETRIEVAL=off,
+      # and PolicyRetriever.from_settings() returns None — trade_economics then
+      # answers exactly as it did before the feature existed, which is a
+      # supported state rather than a broken one. Requires tcp:6333 on the
+      # allow-db-from-backend firewall rule and the image built with `.[policy]`.
+      QDRANT_URL: http://${DATABASE_INTERNAL_IP}:6333
+      QDRANT_COLLECTION: ${QDRANT_COLLECTION:-ceynex_policy}
+      CEYNEX_POLICY_RETRIEVAL: ${CEYNEX_POLICY_RETRIEVAL:-on}
+
       # SRS 3.1.11. ceynex-core's settings.jwt_secret() falls back to a constant
       # that is committed to the repo, so an unset value here means anyone who
       # can read the source can mint an admin token for the live API. There is
@@ -60,6 +69,9 @@ services:
       - models_data:/app/models
       - dataset_data:/app/data
       - llm_cache:/app/.cache
+      # D10's ONNX models. Downloaded on first policy query (~400 MB); a volume
+      # means that cost is paid once per VM, not once per container start.
+      - fastembed_cache:/app/.fastembed
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:8000/health || exit 1"]
       interval: 15s
@@ -71,3 +83,4 @@ volumes:
   models_data:
   dataset_data:
   llm_cache:
+  fastembed_cache:

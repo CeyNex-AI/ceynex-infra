@@ -2,6 +2,7 @@
 # are tracked.
 .env
 */.env
+*.txt
 
 .DS_Store
 
