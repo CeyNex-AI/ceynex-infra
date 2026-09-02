@@ -25,7 +25,7 @@ RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 RUN pip install --no-cache-dir --upgrade pip \
  && pip install --no-cache-dir ./ceynex-contracts \
- && pip install --no-cache-dir ./ceynex-core
+ && pip install --no-cache-dir './ceynex-core[policy]'
 
 
 FROM python:3.12-slim
@@ -54,9 +54,15 @@ COPY ceynex-core/config/ ./config/
 # including its ownership; a path the image does not create arrives owned by
 # root and the non-root process cannot write to it.
 RUN useradd --system --create-home --uid 10001 ceynex \
- && mkdir -p /app/.cache /app/models /app/data/raw /app/data/parquet \
+ && mkdir -p /app/.cache /app/models /app/data/raw /app/data/parquet /app/.fastembed \
  && chown -R ceynex:ceynex /app
 USER ceynex
+
+# The `[policy]` extra's ONNX models (dense, BM25, reranker — roughly 400 MB)
+# are downloaded on first use, not baked in. Pointing the cache at a volume
+# means that download happens once per VM rather than once per container start,
+# and keeps it off the container's writable layer.
+ENV FASTEMBED_CACHE_PATH=/app/.fastembed
 
 EXPOSE 8000
 
