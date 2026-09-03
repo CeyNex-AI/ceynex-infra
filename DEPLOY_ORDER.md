@@ -78,6 +78,54 @@ docker compose exec api python -m ceynex.data.bootstrap   # schema.sql + dim_* s
 docker compose exec api python -m ceynex.kg.load --schema --agreements
 ```
 
+### 2b. Register the forecast models — easy to miss, and silent when missed
+
+**A fresh backend serves every forecast from the drift baseline until you do
+this.** Measured live 2026-09-03: S05 (tea) and S10 (knit apparel) both answered
+with *"No registered export-value model for this item yet, so the figures come
+from a drift baseline"* while `ceynex-core/docs/EVALUATION.md §3` advertised
+5.3% MAPE for tea. Nothing fails and nothing warns — the baseline is a supported
+fallback, so an empty registry looks exactly like a working system.
+
+The artifacts cannot arrive with the source. `models/` is git-ignored, excluded
+by `backend/Dockerfile.dockerignore`, and excluded from the `--exclude='models'`
+update tar in the team deployment doc. The `models_data` volume mounted at
+`CEYNEX_MODELS_DIR=/app/models` is the only path in, so build them where they
+will live:
+
+```bash
+cd ~/ceynex/ceynex-infra/backend
+for spec in agriculture:tea agriculture:cinnamon agriculture:rubber \
+            apparel:apparel_knit apparel:apparel_woven; do
+  docker compose exec -T api python -m eval.backtest \
+    --sector "${spec%%:*}" --item "${spec##*:}" --register
+done
+```
+
+`--register` is what saves the fitted model with its backtest metrics. Do not
+drop it: `registry.load_best` ranks on MAPE and **ignores any version without
+one**, so an unscored model is registered and then never served.
+
+Confirm all five landed, and that the volume survived:
+
+```bash
+docker compose exec api python -c \
+  "from ceynex.models.registry import list_models
+for m in list_models(): print(m.sector, m.item, m.target, m.version, m.metrics)"
+```
+
+Then re-ask a forecast question and check the phrase "drift baseline" is gone:
+
+```bash
+curl -fsS -X POST http://localhost:8000/api/query -H 'content-type: application/json' \
+  -d '{"query":"Forecast knitted apparel export value for the next two years."}' \
+  | grep -c "drift baseline"    # expect 0
+```
+
+This needs `fact_trade` and the graph already loaded (steps 1 and 2a) — the
+backtest trains on the real series, so an empty database gives you five models
+fitted on nothing.
+
 ## 3. `frontend` VM
 
 **Not deployable yet** — the web application is M3's deliverable and there is no
