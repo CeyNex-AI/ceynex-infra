@@ -37,6 +37,33 @@ services:
       QDRANT_COLLECTION: ${QDRANT_COLLECTION:-ceynex_policy}
       CEYNEX_POLICY_RETRIEVAL: ${CEYNEX_POLICY_RETRIEVAL:-on}
 
+      # News sidecar (D11). Its own Qdrant collection on the same server, never
+      # ceynex_policy: unvetted headlines behind the policy filters would become
+      # citable evidence, and NewsStore refuses to start if the two names match.
+      #
+      # This is the first thing in the deployment that calls a *public* API.
+      # Egress from this VM is fine (github.com and api.openai.com both answer
+      # over TLS), but `api.gdeltproject.org` specifically resets every
+      # connection to :443 while serving port 80 normally — measured on the box,
+      # three attempts, spaced. So the endpoint is overridden to http here.
+      #
+      # That trade is documented in config/news.yaml and docs/DEFERRED.md: no
+      # key, no token and no personal data cross the wire, because this API has
+      # none. Drop this line the day :443 starts answering; the default in
+      # config/news.yaml is https and needs no change.
+      #
+      # Re-check with:
+      #   docker compose exec api curl -s -o /dev/null -w '%{http_code}\n' \
+      #     https://api.gdeltproject.org/api/v2/doc/doc?query=tea
+      CEYNEX_GDELT_BASE_URL: ${CEYNEX_GDELT_BASE_URL:-http://api.gdeltproject.org/api/v2/doc/doc}
+
+      QDRANT_NEWS_COLLECTION: ${QDRANT_NEWS_COLLECTION:-ceynex_news}
+      CEYNEX_NEWS: ${CEYNEX_NEWS:-on}
+      # Separate switch so a second replica can serve the shared trending
+      # snapshot without also calling GDELT. Both workers of a single container
+      # coordinate through the Redis lock above instead.
+      CEYNEX_NEWS_REFRESH: ${CEYNEX_NEWS_REFRESH:-on}
+
       # SRS 3.1.11. ceynex-core's settings.jwt_secret() falls back to a constant
       # that is committed to the repo, so an unset value here means anyone who
       # can read the source can mint an admin token for the live API. There is
