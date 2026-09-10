@@ -72,6 +72,16 @@ services:
       # `:?` therefore refuses to start rather than starting insecurely.
       CEYNEX_JWT_SECRET: ${CEYNEX_JWT_SECRET:?set it in .env - openssl rand -hex 32}
 
+      # RBAC bootstrap. The four fixed demo accounts are gone; a fresh database
+      # has zero users and nobody can sign in to become an admin. ceynex-core's
+      # users.ensure_table() reads this once at startup and creates the account
+      # if it is not already present -- it never overwrites an existing row, so
+      # leaving it set across restarts is harmless. Format: email:password.
+      # Empty is supported (e.g. once the real admin exists and has changed the
+      # password); the account can also be made by hand with
+      # `docker compose exec api python -m ceynex.api.users create-admin ...`.
+      CEYNEX_BOOTSTRAP_ADMIN: ${CEYNEX_BOOTSTRAP_ADMIN:-}
+
       # SRS 3.6.5 treats the LLM as a vendor-neutral purchased component; the
       # provider and model ids live in ceynex-core/config/llm.yaml, only the
       # credential lives here. Empty is a supported state — the system degrades
