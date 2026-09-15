@@ -20,8 +20,26 @@ server {
     ssl_certificate_key /etc/nginx/certs/privkey.pem;
     ssl_protocols       TLSv1.2 TLSv1.3;
 
+    # Drops the nginx version number from the Server header (ZAP 10036).
+    server_tokens off;
+
     root /usr/share/nginx/html;
     index index.html;
+
+    # From a ZAP baseline scan, 2026-09-15 -- all "always" so they land on
+    # error responses too, not just 200s. The two external hosts in
+    # connect-src/style-src/font-src are real, checked against the source,
+    # not guessed: index.css @imports Google Fonts (style-src/font-src) and
+    # lib/passwordStrength.ts fetches the HIBP range API for the breach-check
+    # meter (connect-src) -- a blanket 'self'-only policy would silently break
+    # both. React's style={{...}} inline styles need style-src 'unsafe-inline'.
+    # No inline <script> anywhere in index.html or the Vite build output, so
+    # script-src stays 'self' with no unsafe-inline/eval.
+    add_header X-Frame-Options "DENY" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://api.pwnedpasswords.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
 
     # Same-origin API path -> backend VM, over the VPC. This is the only
     # thing that lets the browser reach a service with no public IP at all.
