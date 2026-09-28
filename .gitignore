@@ -6,8 +6,8 @@
 
 .DS_Store
 
-# Self-signed today, certbot-issued later -- either way a private key, never
-# tracked. frontend/README.md documents how to (re)generate it.
+# Let's Encrypt-issued (or make-cert.sh's self-signed fallback) -- either way a
+# private key, never tracked. frontend/README.md documents how to (re)issue it.
 frontend/certs/
 
 # Local working notes — the tracked guidance is README.md and DEPLOY_ORDER.md.

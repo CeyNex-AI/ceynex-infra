@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Generate the self-signed cert nginx serves on :443.
+# Generate a self-signed cert for nginx on :443 -- a bootstrap/fallback only.
+# Production serves a Let's Encrypt cert for ceynex.cc (README.md, TLS).
 #
 # docker-compose.yml bind-mounts ./certs into the container read-only and
 # nginx.conf.template names fullchain.pem/privkey.pem, so nginx will not start
@@ -7,8 +8,8 @@
 # HTTP->HTTPS one, which is why this is a script and not a line of README prose.
 #
 # No public CA issues certs for a bare IP, so this is self-signed and browsers
-# will warn. Once a domain points at this VM, replace these two files with
-# certbot's and add a renewal timer -- nginx.conf.template needs no change.
+# will warn. Use it to get nginx up on a fresh VM, then replace it with the
+# Let's Encrypt cert. On the live VM, --force would overwrite the real cert.
 #
 #   ./make-cert.sh                  # SAN = this VM's external IP, auto-detected
 #   ./make-cert.sh 35.200.228.142   # SAN = the IP you name

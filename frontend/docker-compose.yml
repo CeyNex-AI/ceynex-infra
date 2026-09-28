@@ -16,11 +16,13 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      # Self-signed for now (no domain yet, see README.md); swap the files in
-      # this directory for certbot-issued ones once a domain points here.
+      # Let's Encrypt cert for ceynex.cc, copied in by the VM's renewal script
+      # (README.md, TLS). Bind-mounted so a renewal needs only an nginx
+      # reload, not a rebuild or restart.
       - ./certs:/etc/nginx/certs:ro
     healthcheck:
-      # https, self-signed -- --no-check-certificate matches curl -k. 127.0.0.1
+      # --no-check-certificate: the probe hits 127.0.0.1, which is not a name
+      # on the cert (ceynex.cc), so verification would always fail. 127.0.0.1
       # not localhost: the container's /etc/hosts resolves localhost to ::1
       # first, but nginx only binds 0.0.0.0 (IPv4), so ::1 hits a closed socket.
       test: ["CMD-SHELL", "wget --no-check-certificate -qO- https://127.0.0.1/ >/dev/null || exit 1"]
