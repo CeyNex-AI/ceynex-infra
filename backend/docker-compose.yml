@@ -97,6 +97,16 @@ services:
       # R2. Empty falls back to the committed bulk CSV extract.
       COMTRADE_API_KEY: ${COMTRADE_API_KEY:-}
 
+      # General web search as enrichment (D14). Without a key the feature is
+      # simply off -- there is no keyless fallback -- and the answers are exactly
+      # the pre-web-search ones, which is a supported state, not a broken one.
+      # Both names must be listed here: with no env_file:, a TAVILY_API_KEY that
+      # only sits in .env never reaches the container, and web search stays
+      # inert however the key is set. CEYNEX_WEB_SEARCH=off is the kill switch
+      # that holds even with a key present.
+      TAVILY_API_KEY: ${TAVILY_API_KEY:-}
+      CEYNEX_WEB_SEARCH: ${CEYNEX_WEB_SEARCH:-on}
+
       CEYNEX_DATA_DIR: /app/data
       CEYNEX_MODELS_DIR: /app/models
     volumes:
