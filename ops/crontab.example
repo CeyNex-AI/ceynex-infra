@@ -4,5 +4,9 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 # Nightly backup, copied off the VM (ops/backup.sh, ops/RESTORE.md).
 0 2 * * * $HOME/ceynex/ceynex-infra/ops/backup.sh >> $HOME/backups/backup.log 2>&1
 
+# Monthly data refresh (ops/refresh.sh; ceynex-core D19): the 2nd at 04:30, after
+# the backup and the certificate renewal. Shares the backup's lock.
+30 4 2 * * $HOME/ceynex/ceynex-infra/ops/refresh.sh >> $HOME/backups/refresh.log 2>&1
+
 # Root's crontab holds the TLS renewal at 03:30 (frontend/README.md). The disk
 # snapshot schedule runs at 18:00 inside GCP, not from cron.
