@@ -10,6 +10,44 @@ browser ──http──▶ frontend :80 ──▶ backend :8000 ──▶ datab
  (public)          10.160.0.2       10.160.0.3        10.160.0.4
 ```
 
+## Single VM (production since 2026-09-09)
+
+All three compose projects run on one VM and join one Docker network, `ceynex`.
+The API reaches each store by container name and nginx reaches the API the same
+way, so every database port and 8000 listen on loopback only.
+
+Once per machine, before the first `up` (the network is external, so no project
+ever deletes it):
+
+```bash
+docker network create ceynex
+```
+
+`.env` values that differ from the three-VM layout (each `.env.example` has them):
+
+| File | Set |
+|---|---|
+| `database/.env` | `DB_PUBLISH_ADDR=127.0.0.1`, `COMPOSE_PROJECT_NAME=db` |
+| `backend/.env` | `POSTGRES_HOST=ceynex-postgres`, `NEO4J_HOST=ceynex-neo4j`, `REDIS_HOST=ceynex-redis`, `QDRANT_HOST=ceynex-qdrant`, `API_PUBLISH_ADDR=127.0.0.1` |
+| `frontend/.env` | `BACKEND_INTERNAL_IP=ceynex-api` |
+
+Start, or cut over from the host-port layout, in this order, checking
+`docker compose -p <name> config` first:
+1. `database`, as project `db`;
+2. `backend`;
+3. `frontend`.
+
+The project names must stay `db`, `backend` and `frontend`, because the volume
+names derive from them. Back up first (`ops/backup.sh`).
+
+Afterwards, `ss -ltn` on the VM shows 5432, 6333, 6379, 7474, 7687 and 8000 on
+127.0.0.1 only. An outside `nmap` of the VM shows only 22, 80 and 443.
+
+Memory caps per container (`*_MEM_LIMIT` in each `.env`) default to 1g Postgres,
+5g Neo4j, 512m Redis, 1g Qdrant, 4g API and 256m web: about twice what each used
+at rest on 2026-10-01. They exist so that one runaway container cannot take the
+others down with it.
+
 ## 0. One-time, from your local machine / Cloud Shell
 
 1. Run `gcp/01_firewall_setup.sh` after filling in `VPC_NAME` and `YOUR_SSH_IP`.

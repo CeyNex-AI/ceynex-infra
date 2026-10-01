@@ -1,3 +1,9 @@
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
 services:
   web:
     build:
@@ -8,13 +14,17 @@ services:
     restart: unless-stopped
     environment:
       # Read only by nginx's startup envsubst (nginx.conf.template) to proxy
-      # /api -> the backend VM. Never reaches client-side JS, which is what
-      # makes this safe as a runtime var -- contrast with a VITE_* var, which
-      # would need to be known at `npm run build` time instead (see README.md).
+      # /api -> the API: its container name (`ceynex-api`) on one VM, the
+      # backend VM's internal IP in the three-VM layout. Never reaches
+      # client-side JS, which is what makes this safe as a runtime var --
+      # contrast with a VITE_* var, which would need to be known at
+      # `npm run build` time instead (see README.md).
       BACKEND_INTERNAL_IP: ${BACKEND_INTERNAL_IP}
     ports:
       - "80:80"
       - "443:443"
+    logging: *logging
+    mem_limit: ${WEB_MEM_LIMIT:-256m}
     volumes:
       # Let's Encrypt cert for ceynex.cc, copied in by the VM's renewal script
       # (README.md, TLS). Bind-mounted so a renewal needs only an nginx
@@ -30,3 +40,8 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+
+networks:
+  default:
+    name: ceynex
+    external: true

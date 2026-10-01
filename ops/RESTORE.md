@@ -85,7 +85,7 @@ VM, never the production one:
 gcloud compute instances create ceynex-restore-drill --zone asia-south1-b \
   --machine-type e2-standard-2 --image-family debian-12 --image-project debian-cloud \
   --boot-disk-size 30GB --scopes storage-ro
-gcloud compute ssh ceynex-restore-drill --zone asia-south1-b
+gcloud compute ssh ceynex-restore-drill --zone asia-south1-b --tunnel-through-iap
 #   on it: install docker (gcp/00_install_docker.sh), clone ceynex-infra, then
 #   BACKUP_BUCKET=<bucket> ceynex-infra/ops/restore-drill.sh
 gcloud compute instances delete ceynex-restore-drill --zone asia-south1-b

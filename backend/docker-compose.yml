@@ -1,5 +1,6 @@
-# CeyNex backend VM. No external IP: only the frontend VM reaches port 8000,
-# and only this VM reaches the database VM (gcp/01_firewall_setup.sh).
+# The CeyNex API. Runs on its own VM in the three-VM layout, or beside the data
+# tier and nginx on one VM (production since 2026-09-09). The two differ only
+# in .env: see .env.example's "Where the data tier is".
 #
 # Expects the three repos checked out as siblings, which is why the build
 # context is two levels up:
@@ -10,6 +11,12 @@
 #
 # `ceynex` is a namespace package split across ceynex-contracts and ceynex-core,
 # so the image cannot be built from either repo alone.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
 services:
   api:
     build:
@@ -18,22 +25,30 @@ services:
     image: ceynex-api:latest
     container_name: ceynex-api
     restart: unless-stopped
+    # nginx reaches it over the `ceynex` network on one VM (API_PUBLISH_ADDR
+    # 127.0.0.1 keeps the host port for curl on the box), or across the VPC
+    # from the frontend VM (0.0.0.0, the default).
     ports:
-      - "8000:8000"
+      - "${API_PUBLISH_ADDR:-0.0.0.0}:8000:8000"
+    logging: *logging
+    # Two uvicorn workers, the ONNX models of policy retrieval and LightGBM
+    # used about 1.6 GiB at rest (2026-10-01).
+    mem_limit: ${API_MEM_LIMIT:-4g}
     environment:
-      # Point at the DATABASE VM's internal IP — not localhost, not the frontend VM.
-      POSTGRES_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${DATABASE_INTERNAL_IP}:5432/${POSTGRES_DB}
-      NEO4J_URI: bolt://${DATABASE_INTERNAL_IP}:7687
+      # Each store's host: its container name on one VM (POSTGRES_HOST and the
+      # rest, set in .env), else the database VM's internal IP.
+      POSTGRES_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST:-${DATABASE_INTERNAL_IP}}:5432/${POSTGRES_DB}
+      NEO4J_URI: bolt://${NEO4J_HOST:-${DATABASE_INTERNAL_IP}}:7687
       NEO4J_USER: neo4j
       NEO4J_PASSWORD: ${NEO4J_PASSWORD}
-      REDIS_URL: redis://:${REDIS_PASSWORD}@${DATABASE_INTERNAL_IP}:6379/0
+      REDIS_URL: redis://:${REDIS_PASSWORD}@${REDIS_HOST:-${DATABASE_INTERNAL_IP}}:6379/0
 
       # Policy-document retrieval (D10). Unset, or CEYNEX_POLICY_RETRIEVAL=off,
       # and PolicyRetriever.from_settings() returns None — trade_economics then
       # answers exactly as it did before the feature existed, which is a
       # supported state rather than a broken one. Requires tcp:6333 on the
       # allow-db-from-backend firewall rule and the image built with `.[policy]`.
-      QDRANT_URL: http://${DATABASE_INTERNAL_IP}:6333
+      QDRANT_URL: http://${QDRANT_HOST:-${DATABASE_INTERNAL_IP}}:6333
       QDRANT_COLLECTION: ${QDRANT_COLLECTION:-ceynex_policy}
       CEYNEX_POLICY_RETRIEVAL: ${CEYNEX_POLICY_RETRIEVAL:-on}
 
@@ -125,6 +140,11 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
+
+networks:
+  default:
+    name: ceynex
+    external: true
 
 volumes:
   models_data:
