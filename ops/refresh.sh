@@ -6,7 +6,9 @@
 # Inside the api container, so it uses the image's code and the deployment's
 # credentials exactly as an admin-triggered ingest does:
 #   1. fetch_snapshots: a new Pink Sheet workbook, if the World Bank published one
-#   2. pipeline: re-ingest every source marked `refresh: true` in config/sources.yaml
+#   2. pipeline: re-ingest every source marked `refresh: true` in config/sources.yaml,
+#      fetching again any cached API pull older than 25 days (without that the
+#      Comtrade and FX connectors replay their cache and nothing new arrives)
 #   3. kg.load --flows: rebuild the EXPORTS_TO edges from what fact_trade now holds
 #      (never a bare kg.load, which would re-embed the whole policy corpus)
 # then logs which sources are still past their cadence, which is also what
@@ -37,7 +39,8 @@ log "refresh: sources $sources"
 
 in_api ceynex.data.fetch_snapshots --sources pink_sheet || { status=1; log "WARN snapshot fetch failed"; }
 # shellcheck disable=SC2086  # one word per connector, deliberately
-in_api ceynex.data.pipeline --sources $sources || { status=1; log "WARN ingest reported a failure"; }
+in_api ceynex.data.pipeline --sources $sources --max-cache-age-days 25 \
+  || { status=1; log "WARN ingest reported a failure"; }
 in_api ceynex.kg.load --flows || { status=1; log "WARN graph flows reload failed"; }
 
 docker exec "$API" python -c "
