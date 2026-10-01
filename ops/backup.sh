@@ -138,9 +138,9 @@ done
 # --- Off the VM -----------------------------------------------------------------
 uploaded=no
 if [ -n "$BACKUP_BUCKET" ]; then
-  gcloud storage cp --quiet --recursive "$OUT" "gs://$BACKUP_BUCKET/daily/"
+  gcloud storage cp --quiet --no-user-output-enabled --recursive "$OUT" "gs://$BACKUP_BUCKET/daily/"
   if [ "$(date -u +%u)" = "$WEEKLY_DAY" ]; then
-    gcloud storage cp --quiet --recursive "$OUT" "gs://$BACKUP_BUCKET/weekly/"
+    gcloud storage cp --quiet --no-user-output-enabled --recursive "$OUT" "gs://$BACKUP_BUCKET/weekly/"
   fi
   # Confirmed by reading back what landed, not by trusting the exit status alone.
   expected=$(find "$OUT" -maxdepth 1 -type f | wc -l)
