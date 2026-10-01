@@ -32,6 +32,10 @@ reachable from the internet even by accident.
 | `database/` | Postgres 18, Neo4j 5.26 (+APOC), Redis 8 |
 | `backend/` | The API image and its compose. Builds from `ceynex-contracts` + `ceynex-core`. |
 | `frontend/` | VM-side wiring only — the web app is M3's, see `frontend/README.md` |
+| `gcp/02_backup_setup.sh` | Off-VM backups: static IP, the backup bucket and its lifecycle, the VM's service account, the 90-day snapshot schedule |
+| `ops/backup.sh` | The nightly backup (cron at 02:00 UTC), uploaded to the bucket; `ops/crontab.example` |
+| `ops/restore-drill.sh` | Restores the newest backup into a throwaway stack and checks every count |
+| `ops/RESTORE.md` | What is kept for how long, how to restore it, and the drill log |
 | `DEPLOY_ORDER.md` | The sequence to follow, database first |
 
 ## Things that are easy to get wrong here

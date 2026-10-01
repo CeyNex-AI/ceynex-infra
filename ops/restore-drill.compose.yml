@@ -1,0 +1,44 @@
+# A throwaway copy of the data tier for ops/restore-drill.sh. Never run beside
+# production under the same names: no container_name (the production file pins
+# ceynex-postgres and friends, which would collide), a private network rather
+# than `ceynex`, and nothing published except Qdrant on loopback, whose snapshot
+# upload API is HTTP-only and whose image ships no curl to call it from inside.
+# Sized for an e2-standard-2: Neo4j gets a fraction of production's memory.
+services:
+  postgres:
+    image: postgres:18.4
+    environment:
+      POSTGRES_USER: drill
+      POSTGRES_PASSWORD: ${DRILL_PASSWORD:?}
+      POSTGRES_DB: ceynex
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U drill -d ceynex"]
+      interval: 5s
+      retries: 30
+
+  neo4j:
+    image: neo4j:5.26-community
+    environment:
+      NEO4J_AUTH: neo4j/${DRILL_PASSWORD:?}
+      NEO4J_PLUGINS: '["apoc"]'
+      NEO4J_dbms_security_procedures_unrestricted: "apoc.*"
+      NEO4J_server_memory_heap_initial__size: 512m
+      NEO4J_server_memory_heap_max__size: 512m
+      NEO4J_server_memory_pagecache_size: 256m
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:7474 || exit 1"]
+      interval: 5s
+      retries: 60
+
+  qdrant:
+    image: qdrant/qdrant:v1.17.1
+    ports:
+      - "127.0.0.1:16333:6333"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c ':> /dev/tcp/127.0.0.1/6333' || exit 1"]
+      interval: 5s
+      retries: 30
+
+networks:
+  default:
+    name: restoredrill
