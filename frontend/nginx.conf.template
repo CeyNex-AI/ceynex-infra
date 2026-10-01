@@ -27,6 +27,17 @@ server {
     root /usr/share/nginx/html;
     index index.html;
 
+    # The API's address, looked up per request rather than once at startup. On
+    # one VM BACKEND_INTERNAL_IP is a container name (`ceynex-api`), and every
+    # API deploy recreates that container with a new address: a name resolved
+    # once would leave nginx sending traffic to the old one, a 502 until
+    # someone reloaded it. 127.0.0.11 is Docker's own DNS on the `ceynex`
+    # network. In the three-VM layout the value is an IP literal and nothing
+    # is resolved. The variable name is lower-case so envsubst, which only
+    # replaces variables set in the environment, leaves it alone.
+    resolver 127.0.0.11 valid=10s ipv6=off;
+    set $ceynex_api ${BACKEND_INTERNAL_IP};
+
     # From a ZAP baseline scan, 2026-09-15 -- all "always" so they land on
     # error responses too, not just 200s. The two external hosts in
     # connect-src/style-src/font-src are real, checked against the source,
@@ -49,9 +60,11 @@ server {
     # replaces the matched "/api/" prefix in the upstream request (so
     # /api/query would become /query). The backend's real routes live under
     # /api/ (verified against it directly: POST /api/query, not /query), so
-    # the full original URI must pass through unchanged.
+    # the full original URI must pass through unchanged. With a variable in
+    # proxy_pass that holds in every location: no URI part, the request URI
+    # as sent.
     location /api/ {
-        proxy_pass http://${BACKEND_INTERNAL_IP}:8000;
+        proxy_pass http://$ceynex_api:8000;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -59,8 +72,23 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
+    # The chat stream (SSE). The API already sends `X-Accel-Buffering: no` and
+    # a heartbeat every 15 s inside a 45 s budget; this makes both properties
+    # of the proxy too, rather than of one response header and nginx's 60 s
+    # default read timeout.
+    location /api/chat/ {
+        proxy_pass http://$ceynex_api:8000;
+        proxy_http_version 1.1;
+        proxy_buffering off;
+        proxy_read_timeout 75s;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
     location = /health {
-        proxy_pass http://${BACKEND_INTERNAL_IP}:8000/health;
+        proxy_pass http://$ceynex_api:8000;
     }
 
     # SPA fallback -- the app uses BrowserRouter (see src/App.tsx), so any
