@@ -42,6 +42,8 @@ the single-VM `.env` values unset and the defaults reproduce it;
 | `frontend/` | VM-side wiring only — the web app is M3's, see `frontend/README.md` |
 | `gcp/02_backup_setup.sh` | Off-VM backups: static IP, the backup bucket and its lifecycle, the VM's service account, the 90-day snapshot schedule |
 | `gcp/03_ssh_via_iap.sh` | SSH only through Identity-Aware Proxy: opens 22 to the IAP range, grants the tunnel role, then (on request) closes the 0.0.0.0/0 rules |
+| `gcp/04_monitoring_setup.sh` | Uptime checks on `/health` (availability, and stale data sources) with email alerts, plus a certificate-expiry alert |
+| `ops/refresh.sh` | The monthly data refresh (cron on the 2nd, 04:30 UTC): Pink Sheet fetch, re-ingest, graph flows |
 | `ops/backup.sh` | The nightly backup (cron at 02:00 UTC), uploaded to the bucket; `ops/crontab.example` |
 | `ops/restore-drill.sh` | Restores the newest backup into a throwaway stack and checks every count |
 | `ops/RESTORE.md` | What is kept for how long, how to restore it, and the drill log |
