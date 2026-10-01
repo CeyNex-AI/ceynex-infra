@@ -4,24 +4,32 @@ Deployment and infrastructure for [CeyNex](https://github.com/CeyNex-AI) — a
 multi-agent decision intelligence platform for Sri Lanka's national export
 economy. Group 07, Project P16, CS3501, University of Moratuwa.
 
-Three GCP VMs in one VPC (`asia-south1-a`), one tier each. Only the frontend is
-publicly reachable; the backend and database tiers are protected by source-tag
-firewall rules rather than address ranges, which is what stops them from being
-reachable from the internet even by accident.
+**Production: one GCP VM** (`ceynex`, zone `asia-south1-b`, since 2026-09-09),
+serving https://ceynex.cc. Three compose projects run on it: `db` from
+`database/`, `backend` and `frontend`. They share one Docker network, `ceynex`.
 
 ```
-                    ┌──────────────────────────────────────────┐
-  browser  ──http──▶│ frontend  tier-frontend   10.160.0.2  :80│  ← the only public VM
-                    └──────────────────┬───────────────────────┘
-                                       │ tcp:8000, source-tags=tier-frontend
-                    ┌──────────────────▼───────────────────────┐
-                    │ backend   tier-backend    10.160.0.3     │  FastAPI + LangGraph graph
-                    └──────────────────┬───────────────────────┘
-                                       │ tcp:5432,7474,7687,6379, source-tags=tier-backend
-                    ┌──────────────────▼───────────────────────┐
-                    │ database  tier-database   10.160.0.4     │  Postgres · Neo4j · Redis
-                    └──────────────────────────────────────────┘
+  browser ──https──▶ ceynex-web (nginx, :80 :443, Let's Encrypt)      ← only 80 and 443 are public
+                        │ /api/  /health   (container name, `ceynex` network)
+                        ▼
+                     ceynex-api (FastAPI + LangGraph, 2 uvicorn workers)
+                        │ container names, `ceynex` network
+                        ▼
+     ceynex-postgres · ceynex-neo4j · ceynex-redis · ceynex-qdrant
+     (host ports on 127.0.0.1 only: reachable from the VM itself, never from outside)
 ```
+
+- **SSH:** Identity-Aware Proxy only (`gcp/03_ssh_via_iap.sh`).
+- **Backups:** nightly to GCS, plus 90 days of disk snapshots (`ops/RESTORE.md`).
+- **Refresh:** a monthly cron re-ingests the network-backed sources (`ops/refresh.sh`).
+- **Monitoring:** uptime checks with email alerts watch availability and stale data (`gcp/04_monitoring_setup.sh`).
+- **Deploying:** `DEPLOY_ORDER.md`, "Single VM".
+
+**The original layout, three VMs** (one tier each, `10.160.0.2/.3/.4`, with
+source-tag firewall rules between them), still works from the same files. Leave
+the single-VM `.env` values unset and the defaults reproduce it;
+`gcp/01_firewall_setup.sh` creates its rules. It is described in
+`DEPLOY_ORDER.md` from step 0 on.
 
 ## Layout
 

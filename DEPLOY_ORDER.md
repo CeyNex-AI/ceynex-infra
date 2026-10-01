@@ -1,8 +1,10 @@
 # Deploy order
 
-Three GCP VMs in one VPC, zone `asia-south1-a`. Only `frontend` has an external
+**Production is one VM**: see "Single VM" below. Steps 0 to 4 describe the
+original three-VM layout, which the same files still support. That layout has
+three GCP VMs in one VPC, zone `asia-south1-a`. Only `frontend` has an external
 IP; `backend` and `database` are reachable only from inside the VPC, and only in
-that order — the firewall rules are source-tag based, not source-range based,
+that order. The firewall rules are source-tag based, not source-range based,
 which is what keeps them off the public internet.
 
 ```
@@ -166,10 +168,11 @@ fitted on nothing.
 
 ## 3. `frontend` VM
 
-**Not deployable yet** — the web application is M3's deliverable and there is no
-Dockerfile in `frontend/`. See `frontend/README.md` for the two traps waiting
-there (`VITE_*` build-time inlining, and the browser being unable to reach a
-VPC-internal address). Until then, verify the API from this VM with `curl`.
+**Deployed.** `frontend/Dockerfile` builds the web app from the sibling
+`ceynex-web` checkout, so a web deploy means updating that checkout, then running
+`docker compose up -d --build` here. `frontend/README.md` covers TLS and the two
+traps it was built around (`VITE_*` build-time inlining, and a browser that cannot
+reach a VPC-internal address).
 
 ## 4. Verify end to end
 
