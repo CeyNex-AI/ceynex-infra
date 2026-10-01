@@ -75,8 +75,18 @@ for v in models_data dataset_data; do
   files=$(grep -vc '/$' <<<"$listing" || true)
   echo "drill: $v.tgz intact, $files files"
 done
-models=$(tar tzf "$dir/models_data.tgz" | grep -c 'metrics.json$' || true)
-echo "drill: $models model versions carry metrics"
+# An empty model registry looks exactly like a working one: every forecast just
+# falls back to the drift baseline. Count the versions, and those whose
+# metadata.json records backtest metrics (what `registry.load_best` ranks on).
+registry=$(mktemp -d)
+tar xzf "$dir/models_data.tgz" -C "$registry"
+python3 - "$registry" <<'PY'
+import json, pathlib, sys
+versions = list(pathlib.Path(sys.argv[1]).rglob("metadata.json"))
+scored = sum(1 for p in versions if json.loads(p.read_text()).get("metrics"))
+print(f"drill: model registry holds {len(versions)} versions, {scored} with metrics")
+PY
+rm -rf "$registry"
 
 # --- Configuration: decrypts, when the drill is given the passphrase.
 if [ -n "${BACKUP_PASSPHRASE_FILE:-}" ] && [ -f "$dir/config.tar.gz.gpg" ]; then

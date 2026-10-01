@@ -95,8 +95,9 @@ The drill:
 1. Downloads the newest run and checks the checksums.
 2. Restores Postgres, Neo4j and Qdrant into a throwaway stack (`ops/restore-drill.compose.yml`).
 3. Checks the volume archives list end to end.
-4. Decrypts the config, if given `BACKUP_PASSPHRASE_FILE`.
-5. Recomputes every count in `manifest.json`: rows per table, the upsert key, nodes per label, relationships per type, constraints, and Qdrant points.
+4. Counts the model registry's versions, and those with metrics. An empty registry otherwise looks like a working one.
+5. Decrypts the config, if given `BACKUP_PASSPHRASE_FILE`.
+6. Recomputes every count in `manifest.json`: rows per table, the upsert key, nodes per label, relationships per type, constraints, and Qdrant points.
 
 It exits 0 only if they all match.
 
@@ -106,3 +107,4 @@ involved.
 | Date | Backup restored | Where | Result |
 |---|---|---|---|
 | 2026-10-01 | A run of `ops/backup.sh` against the local dev stack | Workstation, `DRILL_FROM` | All counts matched (19 tables, 6 labels, 6 relationship types, 7 constraints, both collections); config decrypted |
+| 2026-10-01 | `daily/20261001T123026Z`, the first off-VM production backup | Disposable e2-standard-2, from the bucket | All counts matched. Volume archives intact (38 + 1,068 files). Model registry: 16 versions, 12 with metrics. Config decrypted (3 `.env`, TLS state, crontabs). VM deleted afterwards |
