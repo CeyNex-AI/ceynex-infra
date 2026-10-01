@@ -22,3 +22,6 @@ frontend/certs/
 /EDB_Permission_Letter.txt
 /CeyNex - EDB Permission Email.docx
 /CeyNex - EDB Permission Request Letter.docx
+
+# ops/backup.sh settings: bucket name and passphrase location.
+ops/backup.env
