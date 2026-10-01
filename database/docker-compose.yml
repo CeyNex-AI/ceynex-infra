@@ -1,3 +1,13 @@
+# Shared by all three compose files (database, backend, frontend).
+#
+# Logs: json-file is Docker's default, but with no size limit; on a single VM a
+# chatty container fills the disk every other container needs.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
 # Ports: DB_PUBLISH_ADDR chooses where they listen on the host.
 #   - Single VM (production since 2026-09-09): 127.0.0.1. The API reaches each
 #     store by container name over the shared `ceynex` network, so the host
@@ -18,6 +28,8 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "${DB_PUBLISH_ADDR:-0.0.0.0}:5432:5432"
+    logging: *logging
+    mem_limit: ${POSTGRES_MEM_LIMIT:-1g}
     volumes:
       # postgres:18 keeps its data in a version-named subdirectory and wants the
       # mount HERE, one level above. Mounting /var/lib/postgresql/data is what
@@ -55,6 +67,9 @@ services:
       # but a person, through `ssh -L 7474:127.0.0.1:7474 -L 7687:127.0.0.1:7687`.
       - "127.0.0.1:7474:7474"
       - "${DB_PUBLISH_ADDR:-0.0.0.0}:7687:7687"   # Bolt (what the Python driver connects to)
+    logging: *logging
+    # Heap 2G + page cache 2G (above) + JVM and native overhead.
+    mem_limit: ${NEO4J_MEM_LIMIT:-5g}
     volumes:
       - neo4j_data:/data
       - neo4j_logs:/logs
@@ -77,6 +92,8 @@ services:
       REDISCLI_AUTH: ${REDIS_PASSWORD}
     ports:
       - "${DB_PUBLISH_ADDR:-0.0.0.0}:6379:6379"
+    logging: *logging
+    mem_limit: ${REDIS_MEM_LIMIT:-512m}
     volumes:
       - redis_data:/data
     healthcheck:
@@ -100,6 +117,8 @@ services:
       QDRANT__SERVICE__HTTP_PORT: 6333
     ports:
       - "${DB_PUBLISH_ADDR:-0.0.0.0}:6333:6333"
+    logging: *logging
+    mem_limit: ${QDRANT_MEM_LIMIT:-1g}
     volumes:
       - qdrant_data:/qdrant/storage
     healthcheck:

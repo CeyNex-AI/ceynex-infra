@@ -1,3 +1,9 @@
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
 services:
   web:
     build:
@@ -17,6 +23,8 @@ services:
     ports:
       - "80:80"
       - "443:443"
+    logging: *logging
+    mem_limit: ${WEB_MEM_LIMIT:-256m}
     volumes:
       # Let's Encrypt cert for ceynex.cc, copied in by the VM's renewal script
       # (README.md, TLS). Bind-mounted so a renewal needs only an nginx

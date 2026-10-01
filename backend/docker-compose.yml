@@ -11,6 +11,12 @@
 #
 # `ceynex` is a namespace package split across ceynex-contracts and ceynex-core,
 # so the image cannot be built from either repo alone.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
 services:
   api:
     build:
@@ -24,6 +30,10 @@ services:
     # from the frontend VM (0.0.0.0, the default).
     ports:
       - "${API_PUBLISH_ADDR:-0.0.0.0}:8000:8000"
+    logging: *logging
+    # Two uvicorn workers, the ONNX models of policy retrieval and LightGBM
+    # used about 1.6 GiB at rest (2026-10-01).
+    mem_limit: ${API_MEM_LIMIT:-4g}
     environment:
       # Each store's host: its container name on one VM (POSTGRES_HOST and the
       # rest, set in .env), else the database VM's internal IP.

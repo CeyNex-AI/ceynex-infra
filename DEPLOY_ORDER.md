@@ -43,6 +43,11 @@ names derive from them. Back up first (`ops/backup.sh`).
 Afterwards, `ss -ltn` on the VM shows 5432, 6333, 6379, 7474, 7687 and 8000 on
 127.0.0.1 only. An outside `nmap` of the VM shows only 22, 80 and 443.
 
+Memory caps per container (`*_MEM_LIMIT` in each `.env`) default to 1g Postgres,
+5g Neo4j, 512m Redis, 1g Qdrant, 4g API and 256m web: about twice what each used
+at rest on 2026-10-01. They exist so that one runaway container cannot take the
+others down with it.
+
 ## 0. One-time, from your local machine / Cloud Shell
 
 1. Run `gcp/01_firewall_setup.sh` after filling in `VPC_NAME` and `YOUR_SSH_IP`.
