@@ -1,0 +1,8 @@
+# The VM user's crontab (`crontab -e`). Times are UTC.
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# Nightly backup, copied off the VM (ops/backup.sh, ops/RESTORE.md).
+0 2 * * * $HOME/ceynex/ceynex-infra/ops/backup.sh >> $HOME/backups/backup.log 2>&1
+
+# Root's crontab holds the TLS renewal at 03:30 (frontend/README.md). The disk
+# snapshot schedule runs at 18:00 inside GCP, not from cron.
