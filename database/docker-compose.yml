@@ -1,3 +1,12 @@
+# Ports: DB_PUBLISH_ADDR chooses where they listen on the host.
+#   - Single VM (production since 2026-09-09): 127.0.0.1. The API reaches each
+#     store by container name over the shared `ceynex` network, so the host
+#     port only serves tools run on the VM itself (ops/backup.sh's Qdrant
+#     snapshots, psql over an SSH tunnel). Nothing is exposed even if a
+#     firewall rule ever opens: Docker-published ports bypass ufw, so the
+#     binding is the only control that holds by itself.
+#   - Three VMs: 0.0.0.0 (the default), because the backend VM dials this one
+#     across the VPC, guarded by gcp/01_firewall_setup.sh's source-tag rule.
 services:
   postgres:
     image: postgres:18.4
@@ -8,7 +17,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     ports:
-      - "5432:5432"
+      - "${DB_PUBLISH_ADDR:-0.0.0.0}:5432:5432"
     volumes:
       # postgres:18 keeps its data in a version-named subdirectory and wants the
       # mount HERE, one level above. Mounting /var/lib/postgresql/data is what
@@ -42,8 +51,10 @@ services:
       NEO4J_server_memory_heap_max__size: 2G
       NEO4J_server_memory_pagecache_size: 2G
     ports:
-      - "7474:7474"   # Neo4j Browser (HTTP)
-      - "7687:7687"   # Bolt protocol (what your Python driver connects to)
+      # Neo4j Browser (HTTP): loopback only in every layout. Nothing dials it
+      # but a person, through `ssh -L 7474:127.0.0.1:7474 -L 7687:127.0.0.1:7687`.
+      - "127.0.0.1:7474:7474"
+      - "${DB_PUBLISH_ADDR:-0.0.0.0}:7687:7687"   # Bolt (what the Python driver connects to)
     volumes:
       - neo4j_data:/data
       - neo4j_logs:/logs
@@ -65,7 +76,7 @@ services:
       # the credential out of the process list.
       REDISCLI_AUTH: ${REDIS_PASSWORD}
     ports:
-      - "6379:6379"
+      - "${DB_PUBLISH_ADDR:-0.0.0.0}:6379:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -88,7 +99,7 @@ services:
     environment:
       QDRANT__SERVICE__HTTP_PORT: 6333
     ports:
-      - "6333:6333"
+      - "${DB_PUBLISH_ADDR:-0.0.0.0}:6333:6333"
     volumes:
       - qdrant_data:/qdrant/storage
     healthcheck:
@@ -101,6 +112,14 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+# The one network all three projects join, created once per machine with
+# `docker network create ceynex` (DEPLOY_ORDER.md). External, so a `down` in one
+# project never removes it from under the other two.
+networks:
+  default:
+    name: ceynex
+    external: true
 
 volumes:
   postgres_data:
