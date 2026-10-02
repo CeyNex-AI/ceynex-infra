@@ -19,7 +19,9 @@ serving https://ceynex.cc. Three compose projects run on it: `db` from
      (host ports on 127.0.0.1 only: reachable from the VM itself, never from outside)
 ```
 
-- **SSH:** Identity-Aware Proxy only (`gcp/03_ssh_via_iap.sh`).
+- **SSH:** key-only, from anywhere: `sshd` refuses passwords and root. The rule is
+  `ceynex-vpc-allow-ssh` (tcp:22, VMs tagged `ssh`). It was reopened on 2026-10-02,
+  after a period of IAP-only access. IAP still works too (`gcp/03_ssh_via_iap.sh`).
 - **Backups:** nightly to GCS, plus 90 days of disk snapshots (`ops/RESTORE.md`).
 - **Refresh:** a monthly cron re-ingests the network-backed sources (`ops/refresh.sh`).
 - **Monitoring:** uptime checks with email alerts watch availability and stale data (`gcp/04_monitoring_setup.sh`).
@@ -41,7 +43,7 @@ the single-VM `.env` values unset and the defaults reproduce it;
 | `backend/` | The API image and its compose. Builds from `ceynex-contracts` + `ceynex-core`. |
 | `frontend/` | VM-side wiring only — the web app is M3's, see `frontend/README.md` |
 | `gcp/02_backup_setup.sh` | Off-VM backups: static IP, the backup bucket and its lifecycle, the VM's service account, the 90-day snapshot schedule |
-| `gcp/03_ssh_via_iap.sh` | SSH only through Identity-Aware Proxy: opens 22 to the IAP range, grants the tunnel role, then (on request) closes the 0.0.0.0/0 rules |
+| `gcp/03_ssh_via_iap.sh` | SSH through Identity-Aware Proxy: opens 22 to the IAP range and grants the tunnel role. `--close-open-rules` goes back to IAP-only by deleting the rules open to 0.0.0.0/0, `ceynex-vpc-allow-ssh` included |
 | `gcp/04_monitoring_setup.sh` | Uptime checks on `/health` (availability, and stale data sources) with email alerts, plus a certificate-expiry alert |
 | `ops/refresh.sh` | The monthly data refresh (cron on the 2nd, 04:30 UTC): Pink Sheet fetch, re-ingest, graph flows |
 | `ops/backup.sh` | The nightly backup (cron at 02:00 UTC), uploaded to the bucket; `ops/crontab.example` |
