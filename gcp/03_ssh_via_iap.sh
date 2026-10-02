@@ -17,13 +17,17 @@
 #   2. (--close-open-rules) Delete the rules that open tcp:22 or tcp:3389 to
 #      0.0.0.0/0. Run it only once every person who needs the VM has connected
 #      through IAP at least once.
+#
+# Production ran IAP-only from 2026-10-01. On 2026-10-02 the owner reopened
+# tcp:22 to the internet (`ceynex-vpc-allow-ssh`, key-only). Step 2 deletes that
+# rule too, so running it is how to go back to IAP-only.
 set -euo pipefail
 
 PROJECT="${PROJECT:?set PROJECT to the GCP project id}"
 NETWORKS="${NETWORKS:-ceynex-vpc default}"
 IAP_RANGE="35.235.240.0/20"
 IAP_MEMBERS="${IAP_MEMBERS:-}"
-OPEN_RULES="${OPEN_RULES:-ssh default-allow-ssh default-allow-rdp}"
+OPEN_RULES="${OPEN_RULES:-ssh ceynex-vpc-allow-ssh default-allow-ssh default-allow-rdp}"
 g() { gcloud --project "$PROJECT" --quiet "$@"; }
 
 for net in $NETWORKS; do
