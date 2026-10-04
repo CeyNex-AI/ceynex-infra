@@ -154,4 +154,4 @@ The same files still reproduce the first layout: `frontend`, `backend` and `data
 
 ## Team
 
-Infrastructure: Thisen Ekanayake (230170B). Front-end image and nginx: Dhinanjaya Fernando (230181J). Team: Senindu Dinapura (230151T). Supervisor: Dr. Chathuranga Hettiarachchi, University of Moratuwa.
+Infrastructure: Thisen Ekanayake (230170B). Front-end image and nginx: Dhinanjaya Fernando (230181J). Team: Senindu Dinapura (230151T). Supervisor: Dr. Chathuranga Hettiarachchi. Teaching Assistant: Birunthaban Rajendram. University of Moratuwa.
